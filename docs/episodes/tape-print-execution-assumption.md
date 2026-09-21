@@ -15,10 +15,9 @@ meaningfully positive total return over a short test window.
 **What killed it**: repeating the same tests against real historical order-book
 snapshots — entering at the best real ask a couple of seconds after the trigger,
 instead of at the tape's printed price — erased the edge entirely. Expected value per
-discount bucket came out negative or flat across every bucket tested, with no
-profitable tail at any depth of discount; the deepest, most attractive-looking
-discounts were in fact the *worst* buckets once real execution was used. The
-mechanism: a "printed" trade at a broken price is the fill of some other, much faster
+discount bucket came out negative in three of the four discount-depth buckets
+tested, with no reliable, consistent positive tail across depths. The mechanism: a
+"printed" trade at a broken price is the fill of some other, much faster
 participant reacting within microseconds of an opportunity appearing — it is not a
 state any but the fastest possible execution path could ever reach. A backtest that
 treats the tape print itself as its own achievable entry price is therefore not just

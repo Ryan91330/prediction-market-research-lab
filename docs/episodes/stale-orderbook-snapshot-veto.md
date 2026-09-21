@@ -16,10 +16,11 @@ run — computing the imbalance the same way the streaming system does, incremen
 from a book snapshot plus the price-change events applied on top of it, instead of
 recomputing it fresh from static recorded snapshots — reversed the sign completely.
 Every one of five tested periods went negative, across three different fill
-assumptions, and a short live paper-trading run confirmed the reversal shortly after
-it launched. Root-causing the mismatch found the bug: the original backtest's
-imbalance calculation was left frozen on stale raw snapshot values that hadn't yet
-had the incremental price-change updates folded in, so most of the time the "current"
+assumptions, and a short live deployment — trading real capital, not a simulation —
+confirmed the reversal at a loss within about an hour of going live. Root-causing
+the mismatch found the bug: the original backtest's imbalance calculation was left
+frozen on stale raw snapshot values that hadn't yet had the incremental
+price-change updates folded in, so most of the time the "current"
 imbalance it fed the veto was actually a stale, extreme reading rather than the book's
 true state at decision time. In the backtest, the veto ended up firing on this dead
 data more than three-quarters of the time; on genuinely fresh data the same veto
