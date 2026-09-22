@@ -6,7 +6,11 @@ from pathlib import Path
 
 SUSPICIOUS_NAME_PATTERNS = ["*.env", "*.env.*", "*secret*", "*credential*", "*private_key*"]
 SUSPICIOUS_CONTENT_PATTERNS = [
-    re.compile(r"PRIVATE_KEY", re.IGNORECASE),
+    # Requires "=" then a quote: catches a hardcoded Python string assignment
+    # (`PRIVATE_KEY = "0x..."`) without matching a bare reference to an env
+    # var *name* (`os.getenv("POLYMARKET_PRIVATE_KEY")` has no "=" right
+    # after "PRIVATE_KEY", so it doesn't match).
+    re.compile(r"PRIVATE_KEY\s*=\s*['\"]?[A-Za-z0-9+/=]{16,}", re.IGNORECASE),
     re.compile(r"_KEY\s*=\s*['\"][A-Za-z0-9]{16,}"),
     re.compile(r"0x[0-9a-fA-F]{64}"),
     re.compile(r"api[_-]?secret", re.IGNORECASE),
@@ -14,7 +18,13 @@ SUSPICIOUS_CONTENT_PATTERNS = [
 # Includes the scanner's own filenames: this script and its test module
 # necessarily contain the string "secret"/"PRIVATE_KEY" as literal detection
 # pattern text/name, not an actual secret, so they must not self-flag.
+# ".env.example" is a standard, deliberately-committed convention file that
+# documents required env vars with placeholder values (never real secrets,
+# by definition) -- its filename is allowlisted, but its *content* is still
+# scanned by the other patterns (e.g. the 64-hex-char private-key pattern
+# would still catch an accidentally-real value pasted into it).
 SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", "check_no_secrets.py", "test_no_secrets.py"}
+ALLOWED_NAMES = {".env.example"}
 
 
 def find_suspicious_paths(root: str) -> list[str]:
@@ -23,10 +33,11 @@ def find_suspicious_paths(root: str) -> list[str]:
     for path in root_path.rglob("*"):
         if not path.is_file() or any(part in SKIP_DIRS for part in path.parts):
             continue
-        for pattern in SUSPICIOUS_NAME_PATTERNS:
-            if path.match(pattern):
-                violations.append(f"suspicious filename: {path.relative_to(root_path)}")
-                break
+        if path.name not in ALLOWED_NAMES:
+            for pattern in SUSPICIOUS_NAME_PATTERNS:
+                if path.match(pattern):
+                    violations.append(f"suspicious filename: {path.relative_to(root_path)}")
+                    break
         try:
             text = path.read_text(errors="ignore")
         except (UnicodeDecodeError, OSError):
